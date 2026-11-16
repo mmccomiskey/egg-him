@@ -22,7 +22,7 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
 .egg{position:absolute;left:0;top:0;width:30px;height:38px;margin:-19px 0 0 -15px;border-radius:50%/60% 60% 40% 40%;
   background:var(--shell);box-shadow:inset -4px -5px 0 rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.25);pointer-events:none;z-index:3}
 
-/* Counter */
+/* Counter & Hint */
 .counter{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:calc(16px + env(safe-area-inset-left,0px));
   font-size:14px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.6);
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:6px 12px;border-radius:20px;
@@ -31,6 +31,22 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
   :root:not([data-theme="light"]) .counter{background:rgba(23,34,63,.6);box-shadow:0 2px 8px rgba(0,0,0,.3)}
 }
 :root[data-theme="dark"] .counter{background:rgba(23,34,63,.6);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+
+.tap-hint{position:absolute;left:50%;bottom:calc(50% + min(35vw,30vh,210px) + 16px);transform:translateX(-50%);
+  font-size:14px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.75);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:6px 14px;border-radius:20px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);pointer-events:none;user-select:none;z-index:10;
+  white-space:nowrap;transition:opacity .3s ease,transform .3s ease;animation:pulseHint 2s infinite ease-in-out}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .tap-hint{background:rgba(23,34,63,.75);box-shadow:0 2px 10px rgba(0,0,0,.3)}
+}
+:root[data-theme="dark"] .tap-hint{background:rgba(23,34,63,.75);box-shadow:0 2px 10px rgba(0,0,0,.3)}
+
+@keyframes pulseHint{
+  0%,100%{transform:translateX(-50%) translateY(0);opacity:1}
+  50%{transform:translateX(-50%) translateY(-4px);opacity:.85}
+}
+.tap-hint.hidden{opacity:0;transform:translateX(-50%) translateY(6px);animation:none}
 </style>
 </head>
 <body>
@@ -40,6 +56,7 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
     <div class="splats" id="splats"></div>
   </div>
 
+  <div class="tap-hint" id="hint">👆 Tap his face to egg him</div>
   <div class="counter" id="counter" aria-live="polite">🥚 0 landed</div>
 </div>
 <script>
@@ -82,6 +99,11 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
   }
   target.addEventListener('pointerdown',e=>{
     if(e.button !== undefined && e.button !== 0) return;
+    const hint=document.getElementById('hint');
+    if(hint && !hint.classList.contains('hidden')){
+      hint.classList.add('hidden');
+      setTimeout(()=>hint.remove(),400);
+    }
     const b=target.getBoundingClientRect();
     throwEgg((e.clientX-b.left)/b.width*100,(e.clientY-b.top)/b.height*100);
   });
