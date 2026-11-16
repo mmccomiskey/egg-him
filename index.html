@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Egg him</title>
+<style>
+:root{--bg:#F3F5FA;--frame:#E6EAF3;--ring:#FFFFFF;--muted:#5B6782;--shell:#FFFDF6;color-scheme:light;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0F1830;--frame:#22305A;--ring:#17223F;--muted:#9AA6C2;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1830;--frame:#22305A;--ring:#17223F;--muted:#9AA6C2;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+.stage{position:relative;width:100%;height:100%;overflow:hidden;touch-action:manipulation}
+.target{position:absolute;left:50%;top:50%;width:min(70vw,60vh,420px);aspect-ratio:1;transform:translate(-50%,-50%);
+  border-radius:50%;overflow:hidden;background:var(--frame);border:6px solid var(--ring);cursor:crosshair}
+.target img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.02)}
+.placeholder{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);cursor:pointer}
+.placeholder svg{width:42%;opacity:.5;display:block;margin:0 auto 8px}
+input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.splats{position:absolute;inset:0;pointer-events:none}
+.splat{position:absolute;width:46%}
+.egg{position:absolute;left:0;top:0;width:30px;height:38px;margin:-19px 0 0 -15px;border-radius:50%/60% 60% 40% 40%;
+  background:var(--shell);box-shadow:inset -4px -5px 0 rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.25);pointer-events:none;z-index:3}
+
+/* Phase 2: Counter and Email Button */
+.counter{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:calc(16px + env(safe-area-inset-left,0px));
+  font-size:14px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.6);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:6px 12px;border-radius:20px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);pointer-events:none;user-select:none;z-index:10}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .counter{background:rgba(23,34,63,.6);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+}
+:root[data-theme="dark"] .counter{background:rgba(23,34,63,.6);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+
+.email-btn{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px));
+  font-family:inherit;font-size:14px;font-weight:600;color:#1e293b;background:#ffffff;border:1px solid rgba(0,0,0,.08);
+  border-radius:20px;padding:8px 16px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);
+  display:inline-flex;align-items:center;gap:6px;transition:all .15s ease;z-index:10;user-select:none}
+.email-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.16)}
+.email-btn:active:not(:disabled){transform:translateY(0);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.email-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .email-btn{background:#1e293b;color:#f8fafc;border-color:rgba(255,255,255,.1);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+}
+:root[data-theme="dark"] .email-btn{background:#1e293b;color:#f8fafc;border-color:rgba(255,255,255,.1);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="target" id="target">
+    <img id="photo" alt="" src="./photo.jpg">
+    <label class="placeholder" id="ph" hidden>
+      <div><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="36" r="20" fill="currentColor"/><path d="M14 96c4-22 18-34 36-34s32 12 36 34z" fill="currentColor"/></svg>Tap to add his photo</div>
+      <input type="file" id="file" accept="image/*">
+    </label>
+    <div class="splats" id="splats"></div>
+  </div>
+
+  <div class="counter" id="counter" aria-live="polite">🥚 0 landed</div>
+  <button type="button" class="email-btn" id="email-btn" hidden>Email him</button>
+</div>
+<script>
+const WORKER_URL = "";
+
+(() => {
+  const stage=document.getElementById('stage'),target=document.getElementById('target'),splats=document.getElementById('splats'),
+        photo=document.getElementById('photo'),ph=document.getElementById('ph'),
+        counterEl=document.getElementById('counter'),emailBtn=document.getElementById('email-btn');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rand=(a,b)=>a+Math.random()*(b-a);
+  let landedCount = 0;
+
+  // Show button only if WORKER_URL is configured
+  if (WORKER_URL && WORKER_URL.trim() !== "") {
+    emailBtn.hidden = false;
+  }
+
+  function setPhoto(src){photo.src=src;photo.hidden=false;ph.hidden=true;}
+  try{localStorage.removeItem('egg-photo');}catch(e){}
+  document.getElementById('file').addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=()=>{setPhoto(r.result);try{localStorage.setItem('egg-photo',r.result);}catch(err){}};r.readAsDataURL(f);
+  });
+  function blob(r,n){const p=[];for(let i=0;i<n;i++){const a=i/n*Math.PI*2,rr=r*(i%2?rand(.45,.75):rand(.85,1.35));p.push([50+Math.cos(a)*rr,50+Math.sin(a)*rr]);}
+    const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];let m=mid(p[0],p[1]),d=`M${m[0]},${m[1]}`;
+    for(let i=1;i<=n;i++){const c=p[i%n],nx=p[(i+1)%n];m=mid(c,nx);d+=` Q${c[0]},${c[1]} ${m[0]},${m[1]}`;}return d+'Z';}
+  function splat(x,y){
+    landedCount++;
+    if (counterEl) {
+      counterEl.textContent = `🥚 ${landedCount} landed`;
+    }
+    const drips=Array.from({length:5},()=>{const a=rand(0,6.28),d=rand(38,48);return `<circle cx="${50+Math.cos(a)*d}" cy="${50+Math.sin(a)*d}" r="${rand(1.5,4)}" fill="rgba(255,255,255,.85)"/>`}).join('');
+    const yx=50+rand(-6,6),yy=50+rand(-6,6);
+    const el=document.createElement('div');el.className='splat';
+    el.innerHTML=`<svg viewBox="0 0 100 100"><path d="${blob(28,14)}" fill="rgba(255,253,240,.88)"/>${drips}<circle cx="${yx}" cy="${yy}" r="12" fill="#F6A800"/><circle cx="${yx-4}" cy="${yy-4}" r="3.5" fill="rgba(255,255,255,.55)"/><path d="M${yx-3},${yy+10} q2,14 0,22" stroke="rgba(255,253,240,.85)" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`;
+    el.style.left=`calc(${x}% - 23%)`;el.style.top=`calc(${y}% - 23%)`;
+    const rot=rand(0,360),s=rand(.8,1.2);el.style.transform=`rotate(${rot}deg) scale(${s})`;splats.appendChild(el);
+    if(!reduce){el.animate([{transform:`rotate(${rot}deg) scale(.2)`},{transform:`rotate(${rot}deg) scale(${s*1.08})`},{transform:`rotate(${rot}deg) scale(${s})`}],{duration:220,easing:'ease-out'});
+      target.animate([{transform:'translate(-50%,-50%)'},{transform:'translate(calc(-50% + 4px),calc(-50% - 3px))'},{transform:'translate(-50%,-50%)'}],{duration:140});}
+    if(splats.children.length>40)splats.firstElementChild.remove();
+  }
+  function throwEgg(x,y){
+    if(x==null){const a=rand(0,6.28),d=rand(0,32);x=50+Math.cos(a)*d;y=50+Math.sin(a)*d;}
+    if(reduce){splat(x,y);return;}
+    const sb=stage.getBoundingClientRect(),tb=target.getBoundingClientRect();
+    const tx=tb.left-sb.left+tb.width*x/100,ty=tb.top-sb.top+tb.height*y/100;
+    const side=Math.floor(rand(0,4));
+    const sx=side===0?-30:side===1?sb.width+30:rand(0,sb.width),sy=side===2?-40:side===3?sb.height+40:rand(0,sb.height);
+    const egg=document.createElement('div');egg.className='egg';stage.appendChild(egg);
+    const spin=rand(360,900)*(Math.random()<.5?-1:1);
+    egg.animate([{transform:`translate(${sx}px,${sy}px) rotate(0) scale(1.3)`},{transform:`translate(${tx}px,${ty}px) rotate(${spin}deg) scale(.9)`}],
+      {duration:rand(420,650),easing:'cubic-bezier(.3,.1,.7,1)',fill:'forwards'}).onfinish=()=>{egg.remove();splat(x,y);};
+  }
+  target.addEventListener('click',e=>{if(photo.hidden)return;const b=target.getBoundingClientRect();throwEgg((e.clientX-b.left)/b.width*100,(e.clientY-b.top)/b.height*100);});
+  if(!reduce)setInterval(()=>throwEgg(),700);
+
+  // Email button handling
+  if (emailBtn) {
+    emailBtn.addEventListener('click', async () => {
+      if (!WORKER_URL || emailBtn.disabled) return;
+      emailBtn.disabled = true;
+      const originalText = "Email him";
+      emailBtn.textContent = "Sending...";
+
+      let cooldownSeconds = 30;
+      const startCooldownTimer = () => {
+        emailBtn.disabled = true;
+        emailBtn.textContent = `Sent! (${cooldownSeconds}s)`;
+        const interval = setInterval(() => {
+          cooldownSeconds--;
+          if (cooldownSeconds > 0) {
+            emailBtn.textContent = `Sent! (${cooldownSeconds}s)`;
+          } else {
+            clearInterval(interval);
+            emailBtn.disabled = false;
+            emailBtn.textContent = originalText;
+          }
+        }, 1000);
+      };
+
+      try {
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: landedCount })
+        });
+
+        if (res.ok) {
+          startCooldownTimer();
+        } else {
+          emailBtn.textContent = "Failed to send";
+          setTimeout(() => {
+            emailBtn.disabled = false;
+            emailBtn.textContent = originalText;
+          }, 3000);
+        }
+      } catch (err) {
+        emailBtn.textContent = "Failed to send";
+        setTimeout(() => {
+          emailBtn.disabled = false;
+          emailBtn.textContent = originalText;
+        }, 3000);
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
