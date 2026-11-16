@@ -50,10 +50,6 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
   const rand=(a,b)=>a+Math.random()*(b-a);
   let landedCount = 0;
 
-  // Show button only if WORKER_URL is configured
-  if (WORKER_URL && WORKER_URL.trim() !== "") {
-    emailBtn.hidden = false;
-  }
   function blob(r,n){const p=[];for(let i=0;i<n;i++){const a=i/n*Math.PI*2,rr=r*(i%2?rand(.45,.75):rand(.85,1.35));p.push([50+Math.cos(a)*rr,50+Math.sin(a)*rr]);}
     const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];let m=mid(p[0],p[1]),d=`M${m[0]},${m[1]}`;
     for(let i=1;i<=n;i++){const c=p[i%n],nx=p[(i+1)%n];m=mid(c,nx);d+=` Q${c[0]},${c[1]} ${m[0]},${m[1]}`;}return d+'Z';}
