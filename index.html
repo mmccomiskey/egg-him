@@ -22,7 +22,7 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
 .egg{position:absolute;left:0;top:0;width:30px;height:38px;margin:-19px 0 0 -15px;border-radius:50%/60% 60% 40% 40%;
   background:var(--shell);box-shadow:inset -4px -5px 0 rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.25);pointer-events:none;z-index:3}
 
-/* Phase 2: Counter and Email Button */
+/* Counter */
 .counter{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:calc(16px + env(safe-area-inset-left,0px));
   font-size:14px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.6);
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:6px 12px;border-radius:20px;
@@ -31,18 +31,6 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
   :root:not([data-theme="light"]) .counter{background:rgba(23,34,63,.6);box-shadow:0 2px 8px rgba(0,0,0,.3)}
 }
 :root[data-theme="dark"] .counter{background:rgba(23,34,63,.6);box-shadow:0 2px 8px rgba(0,0,0,.3)}
-
-.email-btn{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px));
-  font-family:inherit;font-size:14px;font-weight:600;color:#1e293b;background:#ffffff;border:1px solid rgba(0,0,0,.08);
-  border-radius:20px;padding:8px 16px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.12);
-  display:inline-flex;align-items:center;gap:6px;transition:all .15s ease;z-index:10;user-select:none}
-.email-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.16)}
-.email-btn:active:not(:disabled){transform:translateY(0);box-shadow:0 2px 6px rgba(0,0,0,.1)}
-.email-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]) .email-btn{background:#1e293b;color:#f8fafc;border-color:rgba(255,255,255,.1);box-shadow:0 2px 8px rgba(0,0,0,.4)}
-}
-:root[data-theme="dark"] .email-btn{background:#1e293b;color:#f8fafc;border-color:rgba(255,255,255,.1);box-shadow:0 2px 8px rgba(0,0,0,.4)}
 </style>
 </head>
 <body>
@@ -53,14 +41,11 @@ body{background:var(--bg);font-family:ui-sans-serif,system-ui,-apple-system,"Seg
   </div>
 
   <div class="counter" id="counter" aria-live="polite">🥚 0 landed</div>
-  <button type="button" class="email-btn" id="email-btn" hidden>Email him</button>
 </div>
 <script>
-const WORKER_URL = "";
-
 (() => {
   const stage=document.getElementById('stage'),target=document.getElementById('target'),splats=document.getElementById('splats'),
-        counterEl=document.getElementById('counter'),emailBtn=document.getElementById('email-btn');
+        counterEl=document.getElementById('counter');
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rand=(a,b)=>a+Math.random()*(b-a);
   let landedCount = 0;
@@ -105,56 +90,6 @@ const WORKER_URL = "";
     throwEgg((e.clientX-b.left)/b.width*100,(e.clientY-b.top)/b.height*100);
   });
   if(!reduce)setInterval(()=>throwEgg(),700);
-
-  // Email button handling
-  if (emailBtn) {
-    emailBtn.addEventListener('click', async () => {
-      if (!WORKER_URL || emailBtn.disabled) return;
-      emailBtn.disabled = true;
-      const originalText = "Email him";
-      emailBtn.textContent = "Sending...";
-
-      let cooldownSeconds = 30;
-      const startCooldownTimer = () => {
-        emailBtn.disabled = true;
-        emailBtn.textContent = `Sent! (${cooldownSeconds}s)`;
-        const interval = setInterval(() => {
-          cooldownSeconds--;
-          if (cooldownSeconds > 0) {
-            emailBtn.textContent = `Sent! (${cooldownSeconds}s)`;
-          } else {
-            clearInterval(interval);
-            emailBtn.disabled = false;
-            emailBtn.textContent = originalText;
-          }
-        }, 1000);
-      };
-
-      try {
-        const res = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ count: landedCount })
-        });
-
-        if (res.ok) {
-          startCooldownTimer();
-        } else {
-          emailBtn.textContent = "Failed to send";
-          setTimeout(() => {
-            emailBtn.disabled = false;
-            emailBtn.textContent = originalText;
-          }, 3000);
-        }
-      } catch (err) {
-        emailBtn.textContent = "Failed to send";
-        setTimeout(() => {
-          emailBtn.disabled = false;
-          emailBtn.textContent = originalText;
-        }, 3000);
-      }
-    });
-  }
 })();
 </script>
 </body>
